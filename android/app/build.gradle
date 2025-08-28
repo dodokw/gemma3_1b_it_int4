@@ -1,0 +1,144 @@
+// 이 부분에 플러그인을 추가합니다.
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "com.facebook.react"
+    id "de.undercouch.download" version "5.1.0" // <-- 1. 이 줄을 추가하세요.
+}
+
+/**
+ * This is the configuration block to customize your React Native Android app.
+ * By default you don't need to apply any configuration, just uncomment the lines you need.
+ */
+react {
+    /* Autolinking */
+    autolinkLibrariesWithApp()
+}
+
+/**
+ * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ */
+def enableProguardInReleaseBuilds = false
+
+/**
+ * The preferred build flavor of JavaScriptCore (JSC)
+ *
+ * For example, to use the international variant, you can use:
+ * `def jscFlavor = io.github.react-native-community:jsc-android-intl:2026004.+`
+ *
+ * The international variant includes ICU i18n library and necessary data
+ * give correct results when using with locales other than en-US. Note that
+ * this variant is about 6MiB larger per architecture than default.
+ */
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace "com.yoloposeapp"
+    defaultConfig {
+        applicationId "com.yoloposeapp"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        
+    // TensorFlow Lite GPU delegate 지원을 위한 설정
+       ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+    }
+
+    
+
+    aaptOptions {
+        noCompress ".part1", ".part2", ".part3"
+    }
+
+    // AAR 파일 압축 해제 방지 (큰 모델 파일을 위해)
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
+        doNotStrip "*/arm64-v8a/libtensorflowlite_jni.so"
+        doNotStrip "*/armeabi-v7a/libtensorflowlite_jni.so"
+        doNotStrip "*/x86/libtensorflowlite_jni.so"
+        doNotStrip "*/x86_64/libtensorflowlite_jni.so"
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.debug
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+configurations.all {
+    exclude group: 'com.google.ai.edge.litert'
+}
+
+dependencies {
+    // The version of react-native is set by the React Native Gradle Plugin
+    implementation 'com.google.mediapipe:tasks-genai:0.10.24'
+    implementation 'com.google.mediapipe:tasks-core:0.10.24'
+    // implementation 'com.google.mediapipe:tasks-genai:0.10.12'
+    // implementation 'com.google.mediapipe:tasks-genai-llminference:0.10.12'
+    implementation("com.facebook.react:react-android")
+    implementation(project(':react-native-fast-tflite'))
+
+    // TensorFlow Lite 종속성
+    implementation 'org.tensorflow:tensorflow-lite:2.13.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    
+    // GPU delegate (선택사항 - GPU 가속을 원할 경우)
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.13.0'
+    
+    // NNAPI delegate (선택사항 - NNAPI 가속을 원할 경우)
+    // implementation 'org.tensorflow:tensorflow-lite-nnapi:2.13.0'
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+}
+
+//미디어파이프 모델 다운로드(없으면 실행됩니다.)
+project.ext.ASSET_DIR = projectDir.toString() + '/src/main/assets'
+
+task downloadTaskFile1(type: de.undercouch.gradle.tasks.download.Download) {
+    src 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+    dest project.ext.ASSET_DIR + '/face_landmarker.task'
+    overwrite false
+}
+
+task downloadModelFile2(type: Download) {
+    src 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'
+    dest project.ext.ASSET_DIR + '/face_detection_short_range.tflite'
+    overwrite false
+}
+
+task downloadTaskFile3(type: Download) {
+    src 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task'
+    dest project.ext.ASSET_DIR + '/pose_landmarker_heavy.task'
+    overwrite false
+}
+
+preBuild.dependsOn downloadTaskFile1, downloadModelFile2, downloadTaskFile3

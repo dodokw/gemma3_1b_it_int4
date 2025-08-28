@@ -1,0 +1,19 @@
+❌ : 엑스
+✅ : 체크
+🧹 : 클린
+🚀 : 스타트/부스트
+🔄 : 로딩
+🛑 : 멈춤
+⚠️ : 경고
+⏱️ : 시간
+
+      <Camera
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={true}
+        frameProcessor={frameProcessor}
+        pixelFormat="rgb"
+        resizeMode="cover"
+      />
+
+      adb logcat ReactNative:V ReactNativeJS:V \*:S
